@@ -65,6 +65,17 @@ class _ScanScreenState extends State<ScanScreen> {
       // Traitement de l'image via Mistral OCR
       final result = await _apiService.uploadImage(_imageFile!);
       
+      // Ajout des logs pour déboguer
+      print('Données reçues du backend:');
+      print('Date: ${result.date}');
+      print('Numéro de ticket: ${result.ticketNumber}');
+      print('Total: ${result.total}');
+      print('Mode de paiement: ${result.paymentMode}');
+      print('Articles: ${result.articles.length}');
+      for (var article in result.articles) {
+        print('Article: ${article.name} - Prix: ${article.price} - Quantité: ${article.quantity}');
+      }
+      
       // Navigation vers l'écran de résultat
       if (!mounted) return;
       Navigator.push(

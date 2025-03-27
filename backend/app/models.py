@@ -6,11 +6,13 @@ from flask_login import UserMixin
 db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
+    """Modèle utilisateur"""
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(128))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    receipts = db.relationship('Receipt', backref='user', lazy=True)
 
     # Relations
     tickets = db.relationship('Ticket', backref='user', lazy=True)
@@ -25,6 +27,31 @@ class User(UserMixin, db.Model):
 
     def __repr__(self):
         return f'<User {self.username}>'
+
+class Receipt(db.Model):
+    """Modèle ticket de caisse"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    merchant = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    transaction_id = db.Column(db.String(50))
+    payment_method = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    image_path = db.Column(db.String(255))
+    articles = db.relationship('Article', backref='receipt', lazy=True, cascade='all, delete-orphan')
+
+class Article(db.Model):
+    """Modèle article du ticket"""
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_id = db.Column(db.Integer, db.ForeignKey('receipt.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Article {self.name}>'
 
 class Ticket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -73,3 +100,7 @@ class CarMaintenance(db.Model):
 
     def __repr__(self):
         return f'<Maintenance {self.maintenance_type} on Car {self.car_id}>'
+
+SQLALCHEMY_DATABASE_URI = 'sqlite:///receipts.db'
+UPLOAD_FOLDER = 'uploads'
+MISTRAL_API_KEY = 'votre_clé_api'

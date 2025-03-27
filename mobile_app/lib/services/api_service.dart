@@ -12,6 +12,9 @@ class ApiService {
   // Méthode utilisant multipart pour envoyer l'image
   Future<TicketModel> uploadImage(File imageFile) async {
     try {
+      print("\n=== Début de l'envoi de l'image ===");
+      print("Taille du fichier: ${imageFile.lengthSync()} bytes");
+      
       // Créer une requête multipart
       var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/ocr'));
       
@@ -23,20 +26,81 @@ class ApiService {
         ),
       );
 
+      print("Envoi de la requête au serveur...");
       // Envoyer la requête
       var response = await request.send();
       
       // Récupérer la réponse
       var responseData = await response.stream.bytesToString();
       
+      print("\n=== Réponse du serveur ===");
+      print("Code de statut: ${response.statusCode}");
+      print("Données reçues:");
+      print(responseData);
+      
       // Vérifier le statut de la réponse
       if (response.statusCode == 200) {
-        // Convertir la réponse en modèle TicketModel
-        return TicketModel.fromJson(json.decode(responseData));
+        try {
+          // Convertir la réponse en modèle TicketModel
+          final jsonData = json.decode(responseData);
+          print("\n=== Données JSON décodées ===");
+          print(jsonData);
+          
+          // Vérifier la structure des données
+          if (jsonData == null) {
+            print("❌ Les données reçues sont nulles");
+            throw Exception('Les données reçues sont nulles');
+          }
+          
+          if (jsonData is! Map<String, dynamic>) {
+            print("❌ Les données reçues ne sont pas un objet JSON valide");
+            throw Exception('Les données reçues ne sont pas un objet JSON valide');
+          }
+
+          // Vérifier si les données sont dans un objet 'data'
+          final data = jsonData['data'] as Map<String, dynamic>? ?? jsonData;
+          print("\n=== Données extraites ===");
+          print(data);
+          
+          // Vérifier les champs requis
+          print("\n=== Vérification des champs requis ===");
+          if (!data.containsKey('date')) {
+            print("⚠️ Champ date manquant");
+          }
+          if (!data.containsKey('ticket_number')) {
+            print("⚠️ Champ ticket_number manquant");
+          }
+          if (!data.containsKey('total')) {
+            print("⚠️ Champ total manquant");
+          }
+          if (!data.containsKey('payment_mode')) {
+            print("⚠️ Champ payment_mode manquant");
+          }
+          if (!data.containsKey('articles')) {
+            print("⚠️ Champ articles manquant");
+          }
+          
+          print("\n=== Création du modèle TicketModel ===");
+          final ticket = TicketModel.fromJson(data);
+          print("✅ Modèle créé avec succès");
+          print("Articles trouvés: ${ticket.articles.length}");
+          if (ticket.articles.isNotEmpty) {
+            print("Premier article: ${ticket.articles.first.name} - ${ticket.articles.first.price}€");
+          }
+          print("=== Fin du traitement ===\n");
+          
+          return ticket;
+        } catch (e) {
+          print("\n❌ Erreur lors du parsing JSON: $e");
+          throw Exception('Erreur lors du traitement des données: $e');
+        }
       } else {
+        print("\n❌ Erreur serveur: ${response.statusCode}");
+        print("Réponse: $responseData");
         throw Exception('Échec de l\'analyse OCR: ${response.statusCode}, $responseData');
       }
     } catch (e) {
+      print("\n❌ Erreur lors de l'envoi de l'image: $e");
       throw Exception('Erreur lors de l\'envoi de l\'image: $e');
     }
   }
