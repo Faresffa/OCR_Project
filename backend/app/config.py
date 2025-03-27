@@ -23,5 +23,5 @@ class Config:
     TESSERACT_LANG = os.environ.get('TESSERACT_LANG') or 'fra'  # Langue française par défaut
     
     # Configuration pour l'API Mistral (si utilisée)
-    MISTRAL_API_KEY = os.environ.get('oue93klhrJfR41W4vHGCtMP7g2v3WYQj')
+    MISTRAL_API_KEY = os.environ.get('AAvpnVtVaztKsvvhaCpfNsVel5Ycs4dZ')
     MISTRAL_API_URL = os.environ.get('https://api.mistral.ai/v1/chat/completions') 

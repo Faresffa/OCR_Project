@@ -1,10 +1,11 @@
-// �cran principal de l'application (accueil, scanner, r�sultats)
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import 'scan_screen.dart';
+import 'login_screen.dart'; // Correct the file name here
+import 'car_dashboard_screen.dart'; // Importez votre écran de tableau de bord
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +34,28 @@ class HomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const ScanScreen()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              text: 'Se Connecter',
+              icon: Icons.login,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()), // Assurez-vous que le nom de la classe correspond
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              text: 'Tableau de Bord',
+              icon: Icons.dashboard,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CarDashboardScreen()), // Assurez-vous que le nom de la classe correspond
                 );
               },
             ),

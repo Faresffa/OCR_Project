@@ -1,4 +1,3 @@
-// Écran de scan pour prendre la photo du ticket
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -20,27 +19,23 @@ class _ScanScreenState extends State<ScanScreen> {
   final ApiService _apiService = ApiService();
 
   Future<void> _takePicture() async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
-    
-    if (photo != null) {
-      setState(() {
-        _imageFile = File(photo.path);
-      });
+    try {
+      final XFile? photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70, // Réduire la qualité pour l'envoi
+        maxWidth: 1024,   // Limiter la largeur
+      );
+      
+      if (photo != null) {
+        setState(() {
+          _imageFile = File(photo.path);
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la capture de l\'image: $e');
     }
   }
 
-  // Ajout de la méthode de rotation d'image
-  Future<void> _rotateImage() async {
-    if (_imageFile == null) return;
-    
-    final rotatedImage = await ImageUtils.rotateImage(_imageFile!, 90);
-    
-    setState(() {
-      _imageFile = rotatedImage;
-    });
-  }
-
-  // Méthode mise à jour pour le traitement d'image
   Future<void> _processImage() async {
     if (_imageFile == null) return;
 
@@ -49,14 +44,8 @@ class _ScanScreenState extends State<ScanScreen> {
     });
 
     try {
-      // Optimiser l'image pour l'OCR
-      final optimizedImage = await ImageUtils.optimizeImageForOCR(_imageFile!);
-      
-      // Compresser l'image pour l'envoi au serveur
-      final compressedImage = await ImageUtils.compressImage(optimizedImage);
-      
-      // Envoyer l'image au serveur
-      final result = await _apiService.uploadImage(compressedImage);
+      // Traitement de l'image via Mistral OCR
+      final result = await _apiService.uploadImage(_imageFile!);
       
       // Navigation vers l'écran de résultat
       if (!mounted) return;
@@ -67,10 +56,7 @@ class _ScanScreenState extends State<ScanScreen> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
+      _showErrorSnackBar(e.toString());
     } finally {
       if (mounted) {
         setState(() {
@@ -78,6 +64,15 @@ class _ScanScreenState extends State<ScanScreen> {
         });
       }
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
@@ -90,86 +85,87 @@ class _ScanScreenState extends State<ScanScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _imageFile == null
-                ? Container(
-                    width: 300,
-                    height: 400,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 80,
-                      color: Colors.grey,
-                    ),
-                  )
-                : Container(
-                    width: 300,
-                    height: 400,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(
-                        image: FileImage(_imageFile!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
+            _buildImagePreview(),
             const SizedBox(height: 30),
-            _imageFile == null
-                ? ElevatedButton.icon(
-                    onPressed: _takePicture,
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Prendre une Photo'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 12,
-                      ),
-                    ),
-                  )
-                : Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _takePicture,
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Reprendre'),
-                          ),
-                          const SizedBox(width: 20),
-                          // Ajout du bouton de rotation
-                          ElevatedButton.icon(
-                            onPressed: _rotateImage,
-                            icon: const Icon(Icons.rotate_right),
-                            label: const Text('Pivoter'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: _isProcessing ? null : _processImage,
-                        icon: _isProcessing
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.check),
-                        label: Text(_isProcessing ? 'Traitement...' : 'Analyser'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+            _buildActionButtons(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildImagePreview() {
+    return _imageFile == null
+        ? Container(
+            width: 300,
+            height: 400,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.camera_alt,
+              size: 80,
+              color: Colors.grey,
+            ),
+          )
+        : Container(
+            width: 300,
+            height: 400,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              image: DecorationImage(
+                image: FileImage(_imageFile!),
+                fit: BoxFit.cover,
+              ),
+            ),
+          );
+  }
+
+  Widget _buildActionButtons() {
+    return _imageFile == null
+        ? ElevatedButton.icon(
+            onPressed: _takePicture,
+            icon: const Icon(Icons.camera_alt),
+            label: const Text('Prendre une Photo'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 12,
+              ),
+            ),
+          )
+        : Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _takePicture,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Reprendre'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _isProcessing ? null : _processImage,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.check),
+                label: Text(_isProcessing ? 'Traitement...' : 'Analyser'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
+          );
   }
 }
