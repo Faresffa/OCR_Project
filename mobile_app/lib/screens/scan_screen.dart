@@ -36,6 +36,24 @@ class _ScanScreenState extends State<ScanScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+        maxWidth: 1024,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _imageFile = File(image.path);
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection de l\'image: $e');
+    }
+  }
+
   Future<void> _processImage() async {
     if (_imageFile == null) return;
 
@@ -124,16 +142,33 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Widget _buildActionButtons() {
     return _imageFile == null
-        ? ElevatedButton.icon(
-            onPressed: _takePicture,
-            icon: const Icon(Icons.camera_alt),
-            label: const Text('Prendre une Photo'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 40,
-                vertical: 12,
+        ? Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _takePicture,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Prendre une Photo'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Choisir une Image'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ],
           )
         : Column(
             children: [
@@ -144,6 +179,12 @@ class _ScanScreenState extends State<ScanScreen> {
                     onPressed: _takePicture,
                     icon: const Icon(Icons.refresh),
                     label: const Text('Reprendre'),
+                  ),
+                  const SizedBox(width: 16),
+                  ElevatedButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.photo_library),
+                    label: const Text('Choisir une Image'),
                   ),
                 ],
               ),

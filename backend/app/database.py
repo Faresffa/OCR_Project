@@ -1,5 +1,5 @@
-# # Gestion de la base de donn�es (connexion, initialisation, etc.)
-from flask_sqlalchemy import SQLAlchemy
+# # Gestion de la base de données (connexion, initialisation, etc.)
+from .models import db
 
-# Initialisation de l'extension SQLAlchemy
-db = SQLAlchemy()
+# Exporter l'instance db de models.py
+__all__ = ['db']

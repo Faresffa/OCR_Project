@@ -1,4 +1,4 @@
-# # Configuration de l'application (d�pendances, param�tres...)
+# # Configuration de l'application (dépendances, paramètres...)
 import os
 from datetime import timedelta
 
@@ -22,6 +22,6 @@ class Config:
     TESSERACT_CMD = os.environ.get('TESSERACT_CMD') or 'tesseract'
     TESSERACT_LANG = os.environ.get('TESSERACT_LANG') or 'fra'  # Langue française par défaut
     
-    # Configuration pour l'API Mistral (si utilisée)
-    MISTRAL_API_KEY = os.environ.get('AAvpnVtVaztKsvvhaCpfNsVel5Ycs4dZ')
-    MISTRAL_API_URL = os.environ.get('https://api.mistral.ai/v1/chat/completions') 
+    # Configuration pour l'API Mistral
+    MISTRAL_API_KEY = "AAvpnVtVaztKsvvhaCpfNsVel5Ycs4dZ"
+    MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions" 

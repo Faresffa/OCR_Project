@@ -1,4 +1,3 @@
-import cv2
 import requests
 import json
 from PIL import Image, ImageEnhance, ImageFilter
@@ -6,8 +5,8 @@ from flask import current_app
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-
-
+import base64
+from io import BytesIO
 
 # Charger les variables d'environnement à partir du fichier .env
 load_dotenv()
@@ -83,85 +82,68 @@ def preprocess_image(image_path):
 
     # Augmenter le contraste
     enhancer = ImageEnhance.Contrast(blurred)
-    img_contrast = enhancer.enhance(2.0)  # Ajuste cette valeur selon le besoin
+    img_contrast = enhancer.enhance(2.0)
 
     # Appliquer un filtre de netteté pour améliorer les contours
     img_sharp = img_contrast.filter(ImageFilter.SHARPEN)
 
-    # Retourner l'image prétraitée
     return img_sharp
 
-def extract_text_with_mistral(text):
+def extract_text_with_mistral(image, api_key=None):
     """
-    Utilise l'API Mistral pour extraire les informations structurées d'un texte de ticket.
+    Utilise l'API Mistral PixTral pour extraire le texte d'une image.
     
     Args:
-        text (str): Texte brut extrait de l'image
+        image (PIL.Image): Image à traiter
+        api_key (str, optional): Clé API Mistral (utilise la clé globale si non fournie)
     
     Returns:
-        dict: Dictionnaire contenant les informations extraites ou None en cas d'erreur
+        str: Texte extrait de l'image
     """
-    api_key = os.getenv('oue93klhrJfR41W4vHGCtMP7g2v3WYQj')
-    if not api_key:
-        current_app.logger.error("Clé API Mistral manquante.")
-        return None
+    # Convertir l'image en base64
+    buffered = BytesIO()
+    image.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
     
-    api_url = "https://api.mistral.ai/v1/chat/completions"
-    
-    prompt = f"""
-    Voici le texte extrait d'un ticket de caisse :
-    
-    {text}
-    
-    Extrais les informations suivantes au format JSON :
-    - merchant: Le nom du magasin ou du commerçant
-    - amount: Le montant total de la transaction (en nombre, sans le symbole €)
-    - date: La date de la transaction au format YYYY-MM-DD
-    - transaction_id: Le numéro de transaction ou de ticket
-    
-    Réponds uniquement avec le JSON, sans autre texte.
-    """
-    
+    # Préparer la requête
+    url = current_app.config['MISTRAL_API_URL']
     headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {api_key}'
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key or current_app.config['MISTRAL_API_KEY']}"
     }
     
     payload = {
-        'model': 'mistral-large-latest',
-        'messages': [
-            {'role': 'user', 'content': prompt}
+        "model": "mistral-large-latest",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Extrais le texte de cette image de ticket de caisse et structure les informations suivantes au format JSON : merchant (nom du magasin), amount (montant total), date (date de la transaction), transaction_id (numéro de ticket)."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{img_str}"
+                        }
+                    }
+                ]
+            }
         ],
-        'temperature': 0.0,
-        'max_tokens': 500
+        "temperature": 0.0,
+        "max_tokens": 1000
     }
     
     try:
-        response = requests.post(api_url, headers=headers, json=payload)
-        response.raise_for_status()  # Vérifie les erreurs HTTP
+        response = requests.post(url, headers=headers, json=payload)
+        response.raise_for_status()
         
         result = response.json()
-        content = result['choices'][0]['message']['content']
+        return result['choices'][0]['message']['content']
         
-        try:
-            extracted_data = json.loads(content)
-            
-            # Convertir la date en objet datetime si elle existe
-            if 'date' in extracted_data and extracted_data['date']:
-                try:
-                    extracted_data['date'] = datetime.strptime(extracted_data['date'], '%Y-%m-%d')
-                except ValueError:
-                    extracted_data['date'] = None
-            
-            return extracted_data
-        
-        except json.JSONDecodeError:
-            current_app.logger.error("Erreur lors du décodage du JSON retourné par Mistral.")
-            return None
-
-    except requests.RequestException as e:
-        current_app.logger.error(f"Erreur de requête avec l'API Mistral: {str(e)}")
-    except KeyError:
-        current_app.logger.error("Clé manquante dans la réponse de l'API Mistral.")
-    
-    return None
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Erreur lors de l'appel à l'API Mistral: {str(e)}")
+        if hasattr(e.response, 'text'):
+            current_app.logger.error(f"Réponse de l'API: {e.response.text}")
+        return None
