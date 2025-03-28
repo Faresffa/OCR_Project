@@ -1,61 +1,60 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import 'home_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  SignUpScreenState createState() => SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+  Future<void> _signUp() async {
+    if (!_formKey.currentState!.validate()) return;
 
-  Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-      try {
-        // Tentative de connexion
-        await _authService.login(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
+    try {
+      final response = await http.post(
+        Uri.parse(ApiConfig.signupUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': _emailController.text,
+          'password': _passwordController.text,
+        }),
+      );
 
-        // Si la connexion réussit, on vérifie que le widget est toujours monté
+      if (response.statusCode == 200) {
         if (!mounted) return;
-
-        // Redirection vers HomeScreen
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (Route<dynamic> route) => false,
-        );
-      } catch (e) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        final responseData = json.decode(response.body);
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = responseData['message'] ?? 'Une erreur est survenue';
         });
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+      }
+    } catch (e) {
+      print('Erreur lors de l\'inscription: $e');  // Pour le débogage
+      setState(() {
+        _errorMessage = 'Erreur de connexion au serveur';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -74,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 50),
                 const Text(
-                  'Connexion',
+                  'Créer un compte',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 32,
@@ -101,6 +100,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Veuillez entrer votre email';
                     }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                      return 'Veuillez entrer un email valide';
+                    }
                     return null;
                   },
                 ),
@@ -124,6 +126,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (value == null || value.isEmpty) {
                       return 'Veuillez entrer votre mot de passe';
                     }
+                    if (value.length < 6) {
+                      return 'Le mot de passe doit contenir au moins 6 caractères';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  style: const TextStyle(color: Colors.white),
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Confirmer le mot de passe',
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    filled: true,
+                    fillColor: const Color(0xFF2A2B2E),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Veuillez confirmer votre mot de passe';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Les mots de passe ne correspondent pas';
+                    }
                     return null;
                   },
                 ),
@@ -138,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
+                  onPressed: _isLoading ? null : _signUp,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     padding: const EdgeInsets.symmetric(vertical: 15),
@@ -156,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         )
                       : const Text(
-                          'Se connecter',
+                          'S\'inscrire',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -165,11 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/signup');
-                  },
+                  onPressed: () => Navigator.pop(context),
                   child: const Text(
-                    'Pas encore de compte ? S\'inscrire',
+                    'Déjà un compte ? Se connecter',
                     style: TextStyle(color: Colors.white70),
                   ),
                 ),
@@ -180,4 +209,12 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-}
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+} 

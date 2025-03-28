@@ -4,11 +4,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/ticket_model.dart';
 import '../utils/image_utils.dart';
+import '../config/api_config.dart';
 
 class ApiService {
-  // Remplacez cette URL par l'adresse de votre API backend
-  final String baseUrl = 'http://10.0.2.2:5000/api';  // 10.0.2.2 pour l'émulateur Android
-
   // Méthode utilisant multipart pour envoyer l'image
   Future<TicketModel> uploadImage(File imageFile) async {
     try {
@@ -16,7 +14,7 @@ class ApiService {
       print("Taille du fichier: ${imageFile.lengthSync()} bytes");
       
       // Créer une requête multipart
-      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/ocr'));
+      var request = http.MultipartRequest('POST', Uri.parse(ApiConfig.uploadUrl));
       
       // Ajouter l'image au fichier multipart
       request.files.add(
@@ -25,38 +23,24 @@ class ApiService {
           imageFile.path,
         ),
       );
-
-      print("Envoi de la requête au serveur...");
+      
+      print("\n=== Envoi de la requête ===");
+      print("URL: ${ApiConfig.uploadUrl}");
+      
       // Envoyer la requête
-      var response = await request.send();
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
       
-      // Récupérer la réponse
-      var responseData = await response.stream.bytesToString();
-      
-      print("\n=== Réponse du serveur ===");
-      print("Code de statut: ${response.statusCode}");
-      print("Données reçues:");
-      print(responseData);
+      print("\n=== Réponse reçue ===");
+      print("Status code: ${response.statusCode}");
+      print("Body: ${response.body}");
       
       // Vérifier le statut de la réponse
       if (response.statusCode == 200) {
         try {
-          // Convertir la réponse en modèle TicketModel
+          final responseData = response.body;
           final jsonData = json.decode(responseData);
-          print("\n=== Données JSON décodées ===");
-          print(jsonData);
           
-          // Vérifier la structure des données
-          if (jsonData == null) {
-            print("❌ Les données reçues sont nulles");
-            throw Exception('Les données reçues sont nulles');
-          }
-          
-          if (jsonData is! Map<String, dynamic>) {
-            print("❌ Les données reçues ne sont pas un objet JSON valide");
-            throw Exception('Les données reçues ne sont pas un objet JSON valide');
-          }
-
           // Vérifier si les données sont dans un objet 'data'
           final data = jsonData['data'] as Map<String, dynamic>? ?? jsonData;
           print("\n=== Données extraites ===");
@@ -96,8 +80,8 @@ class ApiService {
         }
       } else {
         print("\n❌ Erreur serveur: ${response.statusCode}");
-        print("Réponse: $responseData");
-        throw Exception('Échec de l\'analyse OCR: ${response.statusCode}, $responseData');
+        print("Réponse: ${response.body}");
+        throw Exception('Échec de l\'analyse OCR: ${response.statusCode}, ${response.body}');
       }
     } catch (e) {
       print("\n❌ Erreur lors de l'envoi de l'image: $e");
@@ -113,7 +97,7 @@ class ApiService {
       
       // Envoyer l'image en base64 au serveur
       final response = await http.post(
-        Uri.parse('$baseUrl/ocr'),
+        Uri.parse(ApiConfig.uploadUrl),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'image': base64Image,
@@ -138,7 +122,7 @@ class ApiService {
   // Récupérer l'historique des tickets
   Future<List<TicketModel>> getTicketHistory() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/tickets'));
+      final response = await http.get(Uri.parse(ApiConfig.baseUrl + '/tickets'));
       
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
@@ -154,7 +138,7 @@ class ApiService {
   // Obtenir les détails d'un ticket spécifique
   Future<TicketModel> getTicketDetails(String ticketId) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/tickets/$ticketId'));
+      final response = await http.get(Uri.parse(ApiConfig.baseUrl + '/tickets/$ticketId'));
       
       if (response.statusCode == 200) {
         return TicketModel.fromJson(json.decode(response.body));

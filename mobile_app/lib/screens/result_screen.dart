@@ -34,8 +34,12 @@ class _ResultScreenState extends State<ResultScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Résultat de l\'analyse'),
-        backgroundColor: Colors.blue,
+        title: const Text(
+          'Résultats de l\'Analyse',
+          style: TextStyle(color: Colors.black),
+        ),
+        backgroundColor: Colors.white,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

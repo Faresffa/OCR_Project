@@ -5,33 +5,24 @@ from flask_login import UserMixin
 
 db = SQLAlchemy()
 
-class User(UserMixin, db.Model):
-    """Modèle utilisateur"""
+class User(db.Model):
+    __tablename__ = 'users'
+    
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    receipts = db.relationship('Receipt', backref='user', lazy=True)
-
+    password = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    
     # Relations
     tickets = db.relationship('Ticket', backref='user', lazy=True)
-    cars = db.relationship('Car', backref='owner', lazy=True)
-
-    # Méthodes pour la gestion des mots de passe
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
 
     def __repr__(self):
-        return f'<User {self.username}>'
+        return f'<User {self.email}>'
 
 class Receipt(db.Model):
     """Modèle ticket de caisse"""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     merchant = db.Column(db.String(100), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     date = db.Column(db.Date, nullable=False)
@@ -54,18 +45,20 @@ class Article(db.Model):
         return f'<Article {self.name}>'
 
 class Ticket(db.Model):
+    __tablename__ = 'tickets'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    merchant = db.Column(db.String(200))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    merchant = db.Column(db.String(100))
     amount = db.Column(db.Float)
     date = db.Column(db.DateTime)
-    transaction_id = db.Column(db.String(200))
-    image_path = db.Column(db.String(500))
+    transaction_id = db.Column(db.String(50))
+    image_path = db.Column(db.String(255))
     raw_text = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
-        return f'<Ticket {self.id} - {self.merchant} - {self.amount}>'
+        return f'<Ticket {self.id}>'
     
     def to_dict(self):
         return {
@@ -80,7 +73,7 @@ class Ticket(db.Model):
 
 class Car(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     make = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, nullable=False)

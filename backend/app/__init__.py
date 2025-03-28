@@ -1,25 +1,30 @@
 # # Initialisation de l'application Flask
 from flask import Flask
 from flask_cors import CORS
-from .config import Config
+from flask_sqlalchemy import SQLAlchemy
 from .models import db
+from .routes import api_bp
 
-def create_app(config_class=Config):
+def create_app():
     app = Flask(__name__)
-    app.config.from_object(config_class)
     
-    # Initialiser les extensions
-    db.init_app(app)
+    # Configuration
+    app.config['SECRET_KEY'] = 'votre-cle-secrete-ici'  # Changez ceci en production
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['UPLOAD_FOLDER'] = 'uploads'
     
-    # Permettre les requêtes CORS pour l'API
+    # Activer CORS pour toutes les routes
     CORS(app)
     
-    # Importer et enregistrer les routes
-    from .routes import api_bp
-    app.register_blueprint(api_bp, url_prefix='/api')
+    # Initialiser la base de données
+    db.init_app(app)
     
-    # Créer les tables dans la base de données
+    # Créer les tables si elles n'existent pas
     with app.app_context():
         db.create_all()
+    
+    # Enregistrer le blueprint principal
+    app.register_blueprint(api_bp)
     
     return app

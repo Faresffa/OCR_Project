@@ -1,24 +1,32 @@
 import 'package:flutter/material.dart';
+import 'screens/signup_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/car_dashboard.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OCR Ticket Scanner',
-      debugShowCheckedModeBanner: false,
+      title: 'OCR App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF1A1B1E),
+        brightness: Brightness.dark,
       ),
-      home: const HomeScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignUpScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/car_dashboard': (context) => const CarDashboard(),
+      },
     );
   }
 }
